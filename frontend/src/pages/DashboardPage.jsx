@@ -5,13 +5,16 @@ import ErrorMessage from "../components/ErrorMessage.jsx";
 import HabitList from "../components/HabitList.jsx";
 import LoadingState from "../components/LoadingState.jsx";
 import Modal from "../components/Modal.jsx";
+import StatTile from "../components/StatTile.jsx";
 import TaskForm from "../components/TaskForm.jsx";
 import TaskList from "../components/TaskList.jsx";
+import WeeklyChart from "../components/WeeklyChart.jsx";
 import { isOverdue, todayDateString } from "../components/taskFormatting.js";
 import useHabitActions from "../hooks/useHabitActions.js";
 import useHabitList from "../hooks/useHabitList.js";
 import useTaskActions from "../hooks/useTaskActions.js";
 import useTaskList from "../hooks/useTaskList.js";
+import useWeeklyInsights from "../hooks/useWeeklyInsights.js";
 
 const ALL_TASKS = {};
 
@@ -26,20 +29,12 @@ function summarize(tasks, today) {
   };
 }
 
-function StatTile({ label, value, tone }) {
-  return (
-    <div className={tone ? `stat-tile stat-${tone}` : "stat-tile"}>
-      <span className="stat-value">{value}</span>
-      <span className="stat-label">{label}</span>
-    </div>
-  );
-}
-
 export default function DashboardPage() {
   const { tasks, setTasks, isLoading, error, reload } = useTaskList(ALL_TASKS);
   const { busyTaskIds, actionError, toggleComplete } = useTaskActions(setTasks);
   const habitList = useHabitList();
   const habitActions = useHabitActions(habitList.setHabits);
+  const weekly = useWeeklyInsights();
   const [isAdding, setIsAdding] = useState(false);
 
   const today = todayDateString();
@@ -54,6 +49,17 @@ export default function DashboardPage() {
     await createTask(fields);
     setIsAdding(false);
     reload();
+  }
+
+  // Completing something on this page also changes this week's chart.
+  async function handleToggleTask(task) {
+    await toggleComplete(task);
+    weekly.reload();
+  }
+
+  async function handleToggleHabit(habit) {
+    await habitActions.toggleToday(habit);
+    weekly.reload();
   }
 
   return (
@@ -98,7 +104,7 @@ export default function DashboardPage() {
                 tasks={focusTasks}
                 emptyMessage="Nothing due today or overdue."
                 busyTaskIds={busyTaskIds}
-                onToggleComplete={toggleComplete}
+                onToggleComplete={handleToggleTask}
               />
             </div>
 
@@ -120,10 +126,24 @@ export default function DashboardPage() {
                   habits={habitList.habits}
                   emptyMessage="No habits yet."
                   busyHabitIds={habitActions.busyHabitIds}
-                  onToggleToday={habitActions.toggleToday}
+                  onToggleToday={handleToggleHabit}
                 />
               )}
             </div>
+          </div>
+
+          <div className="panel dashboard-week">
+            <div className="panel-header">
+              <h2>This week</h2>
+              <Link to="/insights">Insights →</Link>
+            </div>
+            {weekly.isLoading && !weekly.insights && <LoadingState message="Loading this week..." />}
+            {!weekly.isLoading && weekly.error && (
+              <ErrorMessage message="Unable to load this week's progress." onRetry={weekly.reload} />
+            )}
+            {weekly.insights && !weekly.error && (
+              <WeeklyChart days={weekly.insights.days} today={weekly.insights.week.today} />
+            )}
           </div>
         </>
       )}
