@@ -1,6 +1,9 @@
 export const TASK_PRIORITIES = ["low", "medium", "high"];
 export const TASK_SORT_FIELDS = ["due_date", "priority", "created_at", "title"];
 export const SORT_ORDERS = ["asc", "desc"];
+// overdue: past due and not completed; today: due today; week: due today
+// through the next six days; none: no due date.
+export const DUE_FILTERS = ["overdue", "today", "week", "none"];
 
 const MAX_POSTGRES_INTEGER = 2147483647;
 const CREATABLE_FIELDS = [
@@ -20,7 +23,15 @@ const UPDATABLE_FIELDS = [
   "completed",
   "category_ids",
 ];
-const LIST_QUERY_PARAMETERS = ["completed", "priority", "category", "sort", "order"];
+const LIST_QUERY_PARAMETERS = [
+  "completed",
+  "priority",
+  "category",
+  "due",
+  "today",
+  "sort",
+  "order",
+];
 
 export class ValidationError extends Error {
   constructor(message) {
@@ -220,7 +231,7 @@ function readSingleQueryValue(query, name) {
   return value;
 }
 
-export function validateTaskListQuery(query) {
+export function validateTaskListQuery(query, fallbackToday) {
   rejectUnknownQueryParameters(query);
 
   const filters = {};
@@ -244,6 +255,25 @@ export function validateTaskListQuery(query) {
       throw new ValidationError('Query parameter "category" must not be empty.');
     }
     filters.category = category.trim();
+  }
+
+  const due = readSingleQueryValue(query, "due");
+  if (due !== undefined) {
+    if (!DUE_FILTERS.includes(due)) {
+      throw new ValidationError(
+        `Query parameter "due" must be one of: ${DUE_FILTERS.join(", ")}.`,
+      );
+    }
+    filters.due = due;
+  }
+
+  // "today" lets the browser decide which day is today for the due filter.
+  const today = readSingleQueryValue(query, "today");
+  if (today !== undefined && !isValidDateString(today)) {
+    throw new ValidationError('Query parameter "today" must be a valid date in YYYY-MM-DD format.');
+  }
+  if (filters.due !== undefined) {
+    filters.today = today ?? fallbackToday;
   }
 
   const sort = readSingleQueryValue(query, "sort");
