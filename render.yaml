@@ -1,0 +1,28 @@
+# Render Blueprint: one web service runs the Express API and serves the
+# built React app. Database values are entered in the Render dashboard
+# (sync: false keeps them out of this file).
+services:
+  - type: web
+    name: habitflow
+    runtime: node
+    plan: free
+    # db:schema is idempotent (CREATE ... IF NOT EXISTS), so it is safe to run
+    # on every deploy. Seed data is loaded with "Reset demo data" in the app.
+    buildCommand: npm run build && npm --prefix backend run db:schema
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: PGHOST
+        sync: false
+      - key: PGPORT
+        value: "5432"
+      - key: PGUSER
+        sync: false
+      - key: PGPASSWORD
+        sync: false
+      - key: PGDATABASE
+        sync: false
