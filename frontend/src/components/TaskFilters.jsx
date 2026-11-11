@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { listCategories } from "../api/categories.js";
 
-export const FILTER_NAMES = ["completed", "priority", "category", "sort", "order"];
+export const FILTER_NAMES = ["completed", "priority", "category", "due", "sort", "order"];
 
 // Filter and sort controls. `values` holds the current query (strings,
 // "" meaning "any"); `onChange(name, value)` updates one of them.
@@ -62,6 +62,17 @@ export default function TaskFilters({ values, onChange, onClear }) {
               {category.name}
             </option>
           ))}
+        </select>
+      </label>
+
+      <label className="form-field">
+        <span>Due</span>
+        <select value={values.due} onChange={(event) => onChange("due", event.target.value)}>
+          <option value="">Any time</option>
+          <option value="overdue">Overdue</option>
+          <option value="today">Due today</option>
+          <option value="week">Next 7 days</option>
+          <option value="none">No due date</option>
         </select>
       </label>
 

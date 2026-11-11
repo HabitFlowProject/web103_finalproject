@@ -15,9 +15,15 @@ CREATE TABLE IF NOT EXISTS tasks (
     CHECK (priority IN ('low', 'medium', 'high')),
   due_date DATE,
   completed BOOLEAN NOT NULL DEFAULT FALSE,
+  completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Databases created before completed_at existed get the column here, and
+-- already-completed tasks are back-filled from their last update.
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+UPDATE tasks SET completed_at = updated_at WHERE completed AND completed_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS habits (
   id SERIAL PRIMARY KEY,
