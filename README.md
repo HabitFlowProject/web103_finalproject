@@ -10,7 +10,7 @@ Designed and developed by: Mithun Venkatesh Gowda, Bailey Perillo, Anurag Bheema
 
 ### Description and Purpose
 
-A full-stack productivity dashboard and habit tracker designed to help users build consistent daily routines, manage tasks efficiently, and receive AI-driven weekly coaching insights, bottleneck analysis, and automated priority suggestions to optimize their personal workflows.
+A full-stack productivity dashboard and habit tracker that helps users build consistent daily routines and manage tasks. Users sign in with GitHub, organize tasks with categories, track habit streaks, and get a calculated weekly insights panel that compares this week with last week and highlights overdue work, streaks, and their most-used categories.
 
 ### Inspiration
 
@@ -22,7 +22,9 @@ Frontend: React, Vite, React Router, CSS
 
 Backend: Node.js, Express.js, RESTful API
 
-Database: PostgreSQL (with one-to-many and many-to-many relationships)
+Database: PostgreSQL (with one-to-one, one-to-many, and many-to-many relationships)
+
+Authentication: GitHub OAuth with Passport.js, sessions stored in PostgreSQL
 
 Deployment: Render
 
@@ -53,10 +55,18 @@ The final milestone (Unit 9) completes the app:
   count tasks finished each day.
 - A due-date filter on the Tasks page: overdue, due today, next 7 days, or no
   due date.
-- "Reset demo data" in the footer restores the database to its seeded state.
+- Sign in with GitHub (Passport.js). Every page except the login page
+  requires signing in, and each user only sees their own tasks and habits.
+- A user's first sign-in automatically creates a starter set of tasks and
+  habits. GitHub details are stored in `github_profiles`, which has a
+  one-to-one relationship with `users`.
+- The `task_categories` join table records `added_at`, shown on the task
+  details page.
+- "Reset demo data" in the footer restores the signed-in user's starter set.
 - Express serves the built React app, so the whole project deploys as one
-  Render web service (`render.yaml`).
-- 146 automated backend tests (`npm test`).
+  Render web service (`render.yaml`), live at
+  https://habitflow-6ky6.onrender.com/.
+- 168 automated backend tests (`npm test`).
 
 ### API Reference
 
@@ -150,12 +160,23 @@ response without exposing database credentials.
 ### Completed Unit 9 Issues
 
 - [#4 Implement habits and completion streaks](https://github.com/HabitFlowProject/web103_finalproject/issues/4) ✅
+- [#14 Add weekly insights, database reset, and due-date filter](https://github.com/HabitFlowProject/web103_finalproject/issues/14) ✅
+- [#15 Deploy HabitFlow to Render](https://github.com/HabitFlowProject/web103_finalproject/issues/15) ✅
+- [#18 Add GitHub login with Passport.js](https://github.com/HabitFlowProject/web103_finalproject/issues/18) ✅
+- [#19 Auto-create starter tasks and habits on first login](https://github.com/HabitFlowProject/web103_finalproject/issues/19) ✅
+- [#20 Add a unique field to the join table](https://github.com/HabitFlowProject/web103_finalproject/issues/20) ✅
+- [#16 Record the final demo GIF](https://github.com/HabitFlowProject/web103_finalproject/issues/16) ✅
+- [#17 Complete the milestone documentation](https://github.com/HabitFlowProject/web103_finalproject/issues/17) ✅
+
+### Final Demo
+
+![HabitFlow final walkthrough](images/final-demo.gif)
 
 ## Features
 
 ### ✅ User Dashboard Overview:
 
-A centralized analytics view displaying daily completion rates, active habit streaks, and productivity scores.
+A centralized view displaying task completion rates, overdue work, active habit streaks, and this week's activity.
 
 Completed in Unit 8: task totals, completed, incomplete, overdue, and completion
 percentage from real data, plus a "Due today and overdue" list where tasks can
@@ -167,7 +188,7 @@ completed tasks.
 
 ### ✅ Habit & Task CRUD Management:
 
-Full create, read, update, edit, and delete capabilities for managing daily habits, recurring tasks, and completion logs.
+Full create, read, update, and delete capabilities for managing tasks, daily habits, and habit completion logs.
 
 Completed in Unit 8 for tasks: create and edit in a modal form, mark complete,
 delete with confirmation, and a task details page.
@@ -194,7 +215,7 @@ task details page and kept when the task is edited.
 
 ### ✅ Weekly Coaching & Insights Panel:
 
-A dedicated view where users receive automated summaries and recommendations based on their weekly habit completion patterns.
+A dedicated view where users receive calculated summaries and highlights based on their weekly task and habit activity.
 
 The insights are calculated from real data (no LLM): tasks completed and
 habit check-ins this week compared with last week, the share of scheduled
@@ -206,7 +227,7 @@ today. Real AI-generated coaching remains a stretch goal.
 
 ### ✅ Interactive Filtering & Sorting:
 
-Filter tasks and habits by completion status, priority level, or category tags.
+Filter and sort tasks by completion status, priority level, category tags, or due date.
 
 Tasks can be filtered by status, priority, and category, and sorted by due
 date, priority, created date, or title. Filters are kept in the URL.
@@ -249,6 +270,8 @@ four tasks (linked to categories, one already completed) and three habits, so
 the app is ready to explore. The same starter set is what "Reset demo data"
 restores.
 
+![GitHub sign-in walkthrough](images/github-sign-in.gif)
+
 ## Installation Instructions
 
 ### Backend
@@ -257,9 +280,12 @@ restores.
 cd backend
 npm install
 npm run db:schema
-npm run db:seed
 npm start
 ```
+
+Sign in with GitHub to get your starter tasks and habits. (`npm run db:seed`
+adds the categories and a demo user used by the automated tests; it is not
+needed to use the app.)
 
 The backend requires a local ignored `.env` file containing the Render
 PostgreSQL connection variables:
