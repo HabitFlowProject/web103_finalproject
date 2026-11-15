@@ -126,7 +126,7 @@ export default function TaskDetailsPage() {
             <dt>Categories</dt>
             <dd>
               {task.categories.length > 0 ? (
-                <CategoryTags categories={task.categories} />
+                <CategoryTags categories={task.categories} showAddedAt />
               ) : (
                 "None"
               )}

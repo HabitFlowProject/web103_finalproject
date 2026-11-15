@@ -175,7 +175,9 @@ completion history.
 Organize habits and tasks into custom categories (e.g., Health, Career, Learning) with a join table allowing flexible categorization.
 
 Tasks can be tagged with any number of categories through the `task_categories`
-join table, and tags are shown on every task.
+join table, and tags are shown on every task. The join table also stores
+`added_at`, the date each category was added to a task, which is shown on the
+task details page and kept when the task is edited.
 
 ![Category tagging walkthrough](images/categories.gif)
 

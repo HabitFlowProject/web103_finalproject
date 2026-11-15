@@ -17,7 +17,8 @@ const TASK_WITH_CATEGORIES_SELECT = `
         json_build_object(
           'id', c.id,
           'name', c.name,
-          'color', c.color
+          'color', c.color,
+          'added_at', tc.added_at
         )
         ORDER BY c.name
       ) FILTER (WHERE c.id IS NOT NULL),
@@ -132,13 +133,20 @@ export async function allCategoriesExist(categoryIds) {
   return result.rows[0].count === categoryIds.length;
 }
 
+// Removes links that are no longer wanted and adds new ones. Links that stay
+// are left untouched so they keep their original added_at.
 async function replaceTaskCategories(client, taskId, categoryIds) {
-  await client.query("DELETE FROM task_categories WHERE task_id = $1", [taskId]);
+  await client.query(
+    `DELETE FROM task_categories
+     WHERE task_id = $1 AND NOT (category_id = ANY($2::int[]))`,
+    [taskId, categoryIds],
+  );
 
   if (categoryIds.length > 0) {
     await client.query(
       `INSERT INTO task_categories (task_id, category_id)
-       SELECT $1, unnest($2::int[])`,
+       SELECT $1, unnest($2::int[])
+       ON CONFLICT (task_id, category_id) DO NOTHING`,
       [taskId, categoryIds],
     );
   }

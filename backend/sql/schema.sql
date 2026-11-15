@@ -53,5 +53,11 @@ CREATE TABLE IF NOT EXISTS categories (
 CREATE TABLE IF NOT EXISTS task_categories (
   task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  added_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (task_id, category_id)
 );
+
+-- When a category was attached to a task. Databases created before this
+-- column existed get it here; existing links are stamped with the add time.
+ALTER TABLE task_categories
+  ADD COLUMN IF NOT EXISTS added_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;

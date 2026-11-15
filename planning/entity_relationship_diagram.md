@@ -69,6 +69,7 @@ erDiagram
     TASK_CATEGORIES {
         integer task_id PK, FK
         integer category_id PK, FK
+        timestamp added_at
     }
 ```
 

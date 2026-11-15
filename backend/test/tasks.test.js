@@ -530,6 +530,38 @@ describe("task categories (category_ids)", () => {
     assert.deepEqual(categoryNamesOf(response.body), ["Career"]);
   });
 
+  it("records when each category was added to a task", async () => {
+    const response = await request("GET", "/api/tasks");
+    const linked = response.body.flatMap((task) => task.categories);
+
+    assert.ok(linked.length > 0);
+    for (const category of linked) {
+      assert.ok(!Number.isNaN(Date.parse(category.added_at)), category.name);
+    }
+  });
+
+  it("keeps added_at for categories that stay on PATCH and stamps new ones", async () => {
+    const taskId = await getTaskIdByTitle("Review reading notes");
+    const [learningId] = await categoryIdsByName("Learning");
+    const [careerId] = await categoryIdsByName("Career");
+    await pool.query(
+      "UPDATE task_categories SET added_at = '2026-01-01T00:00:00Z' WHERE task_id = $1",
+      [taskId],
+    );
+
+    const response = await request("PATCH", `/api/tasks/${taskId}`, {
+      body: { category_ids: [learningId, careerId] },
+    });
+
+    assert.equal(response.status, 200);
+    const byName = Object.fromEntries(
+      response.body.categories.map((category) => [category.name, category.added_at]),
+    );
+    assert.deepEqual(Object.keys(byName).sort(), ["Career", "Learning"]);
+    assert.equal(new Date(byName.Learning).toISOString(), "2026-01-01T00:00:00.000Z");
+    assert.ok(new Date(byName.Career) > new Date("2026-01-02T00:00:00Z"));
+  });
+
   it("removes all categories when category_ids is empty", async () => {
     const taskId = await getTaskIdByTitle("Review reading notes");
     const response = await request("PATCH", `/api/tasks/${taskId}`, {
