@@ -1,7 +1,7 @@
 import { HABIT_FREQUENCIES } from "../utils/habitStreaks.js";
 import { ValidationError, isValidDateString, isValidId } from "./taskValidation.js";
 
-const CREATABLE_FIELDS = ["name", "description", "frequency", "user_id"];
+const CREATABLE_FIELDS = ["name", "description", "frequency"];
 const UPDATABLE_FIELDS = ["name", "description", "frequency"];
 
 function isPlainObject(value) {
@@ -71,15 +71,10 @@ export function validateCreateHabitInput(body) {
 
   rejectUnknownFields(body, CREATABLE_FIELDS);
 
-  if (!isValidId(body.user_id)) {
-    throw new ValidationError("Habit user_id must be a positive integer.");
-  }
-
   const habit = {
     name: validateName(body.name),
     description: "",
     frequency: "daily",
-    user_id: Number(body.user_id),
   };
 
   for (const field of ["description", "frequency"]) {

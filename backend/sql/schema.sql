@@ -2,9 +2,32 @@ CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT UNIQUE,
-  github_id TEXT UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- GitHub details now live in github_profiles (below).
+ALTER TABLE users DROP COLUMN IF EXISTS github_id;
+
+-- One-to-one with users: user_id is both the primary key and the foreign
+-- key, so a user has at most one GitHub profile and each profile belongs to
+-- exactly one user.
+CREATE TABLE IF NOT EXISTS github_profiles (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  github_id TEXT NOT NULL UNIQUE,
+  username TEXT NOT NULL,
+  avatar_url TEXT,
+  profile_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Login sessions, used by connect-pg-simple (its standard table layout).
+CREATE TABLE IF NOT EXISTS session (
+  sid VARCHAR NOT NULL PRIMARY KEY,
+  sess JSON NOT NULL,
+  expire TIMESTAMP(6) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS session_expire_idx ON session (expire);
 
 CREATE TABLE IF NOT EXISTS tasks (
   id SERIAL PRIMARY KEY,

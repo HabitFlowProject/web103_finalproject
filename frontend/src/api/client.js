@@ -1,6 +1,13 @@
 // Base URL for the backend. Empty in development, where Vite proxies /api to
 // the local server; set VITE_API_BASE_URL for production builds.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+
+// Called when the server answers 401 (not signed in or session expired).
+let handleUnauthorized = null;
+
+export function setUnauthorizedHandler(handler) {
+  handleUnauthorized = handler;
+}
 
 export class ApiError extends Error {
   constructor(message, status) {
@@ -40,6 +47,10 @@ export async function apiRequest(path, { signal, ...options } = {}) {
       throw error;
     }
     throw new ApiError("Unable to reach the server. Please try again.", 0);
+  }
+
+  if (response.status === 401 && handleUnauthorized) {
+    handleUnauthorized();
   }
 
   if (!response.ok) {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { resetDemoData } from "../api/reset.js";
 
-// Restores the seeded demo data. `onReset` runs after a successful reset so
+// Replaces the signed-in user's data with the starter set. `onReset` runs after a successful reset so
 // the current page can reload.
 export default function ResetDemoData({ onReset }) {
   const [isResetting, setIsResetting] = useState(false);
@@ -10,7 +10,7 @@ export default function ResetDemoData({ onReset }) {
   async function handleReset() {
     if (
       !window.confirm(
-        "Reset all tasks, habits, and check-ins to the original demo data? This cannot be undone.",
+        "Replace all of your tasks, habits, and check-ins with the starter set? This cannot be undone.",
       )
     ) {
       return;
@@ -21,7 +21,7 @@ export default function ResetDemoData({ onReset }) {
 
     try {
       await resetDemoData();
-      setStatus({ isError: false, message: "Demo data restored." });
+      setStatus({ isError: false, message: "Starter data restored." });
       onReset();
     } catch (error) {
       console.error(error);

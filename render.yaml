@@ -26,3 +26,13 @@ services:
         sync: false
       - key: PGDATABASE
         sync: false
+      # GitHub login. Use the OAuth App whose callback URL points at Render.
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CALLBACK_URL
+        value: https://habitflow-6ky6.onrender.com/api/auth/github/callback
+      # Signs the login cookie. Render generates a random value.
+      - key: SESSION_SECRET
+        generateValue: true

@@ -19,21 +19,24 @@ const HABIT_WITH_COMPLETIONS_SELECT = `
   LEFT JOIN habit_completions AS hc ON hc.habit_id = h.id
 `;
 
-export async function getAllHabits() {
+// Every query is limited to one user's habits.
+export async function getAllHabits(userId) {
   const result = await pool.query(
     `${HABIT_WITH_COMPLETIONS_SELECT}
+     WHERE h.user_id = $1
      GROUP BY h.id
      ORDER BY h.created_at ASC, h.id ASC`,
+    [userId],
   );
   return result.rows;
 }
 
-export async function getHabitById(habitId) {
+export async function getHabitById(habitId, userId) {
   const result = await pool.query(
     `${HABIT_WITH_COMPLETIONS_SELECT}
-     WHERE h.id = $1
+     WHERE h.id = $1 AND h.user_id = $2
      GROUP BY h.id`,
-    [habitId],
+    [habitId, userId],
   );
   return result.rows[0] ?? null;
 }
@@ -45,10 +48,10 @@ export async function createHabit({ name, description, frequency, user_id }) {
      RETURNING id`,
     [name, description, frequency, user_id],
   );
-  return getHabitById(result.rows[0].id);
+  return getHabitById(result.rows[0].id, user_id);
 }
 
-export async function updateHabit(habitId, updates) {
+export async function updateHabit(habitId, userId, updates) {
   const allowedColumns = ["name", "description", "frequency"];
   const assignments = [];
   const values = [];
@@ -64,25 +67,33 @@ export async function updateHabit(habitId, updates) {
     throw new Error("updateHabit requires at least one column to update.");
   }
 
-  values.push(habitId);
+  values.push(habitId, userId);
   const result = await pool.query(
     `UPDATE habits
      SET ${assignments.join(", ")}, updated_at = NOW()
-     WHERE id = $${values.length}
+     WHERE id = $${values.length - 1} AND user_id = $${values.length}
      RETURNING id`,
     values,
   );
 
-  return result.rowCount === 0 ? null : getHabitById(habitId);
+  return result.rowCount === 0 ? null : getHabitById(habitId, userId);
 }
 
-export async function deleteHabit(habitId) {
-  const result = await pool.query("DELETE FROM habits WHERE id = $1", [habitId]);
+export async function deleteHabit(habitId, userId) {
+  const result = await pool.query("DELETE FROM habits WHERE id = $1 AND user_id = $2", [
+    habitId,
+    userId,
+  ]);
   return result.rowCount > 0;
 }
 
-export async function habitExists(habitId) {
-  const result = await pool.query("SELECT 1 FROM habits WHERE id = $1", [habitId]);
+// Completion functions below take a habit id only, so controllers call this
+// first to make sure the habit belongs to the signed-in user.
+export async function habitExists(habitId, userId) {
+  const result = await pool.query("SELECT 1 FROM habits WHERE id = $1 AND user_id = $2", [
+    habitId,
+    userId,
+  ]);
   return result.rowCount > 0;
 }
 

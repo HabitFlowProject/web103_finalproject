@@ -12,7 +12,6 @@ const CREATABLE_FIELDS = [
   "priority",
   "due_date",
   "completed",
-  "user_id",
   "category_ids",
 ];
 const UPDATABLE_FIELDS = [
@@ -168,17 +167,12 @@ export function validateCreateTaskInput(body) {
 
   rejectUnknownFields(body, CREATABLE_FIELDS);
 
-  if (!isValidId(body.user_id)) {
-    throw new ValidationError("Task user_id must be a positive integer.");
-  }
-
   const task = {
     title: validateTitle(body.title),
     description: "",
     priority: "medium",
     due_date: null,
     completed: false,
-    user_id: Number(body.user_id),
     category_ids: [],
   };
 

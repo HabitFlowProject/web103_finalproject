@@ -1,13 +1,15 @@
 import "./setup.js";
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
-import app from "../src/app.js";
+import { createTestApp } from "./helpers/testApp.js";
 import {
   getDemoUserId,
   getTaskIdByTitle,
   pool,
   resetDatabase,
 } from "./helpers/testDatabase.js";
+
+const app = createTestApp();
 
 let server;
 let baseUrl;
@@ -195,7 +197,7 @@ describe("GET /api/tasks sorting", () => {
 
   it("sorts by created date with the newest task first", async () => {
     await request("POST", "/api/tasks", {
-      body: { title: "Newest task", user_id: demoUserId },
+      body: { title: "Newest task" },
     });
     const response = await request("GET", "/api/tasks?sort=created_at");
 
@@ -246,7 +248,7 @@ describe("GET /api/tasks/:id", () => {
 describe("POST /api/tasks", () => {
   it("creates a task with defaults and returns 201", async () => {
     const response = await request("POST", "/api/tasks", {
-      body: { title: "  Write tests  ", user_id: demoUserId },
+      body: { title: "  Write tests  " },
     });
 
     assert.equal(response.status, 201);
@@ -271,7 +273,6 @@ describe("POST /api/tasks", () => {
         priority: "high",
         due_date: "2026-12-31",
         completed: true,
-        user_id: demoUserId,
       },
     });
 
@@ -299,7 +300,7 @@ describe("POST /api/tasks", () => {
   for (const [description, fields, expectedError] of invalidBodies) {
     it(`rejects ${description} with 400`, async () => {
       const response = await request("POST", "/api/tasks", {
-        body: { user_id: demoUserId, ...fields },
+        body: { ...fields },
       });
 
       assert.equal(response.status, 400);
@@ -311,26 +312,13 @@ describe("POST /api/tasks", () => {
     });
   }
 
-  it("rejects a missing or invalid user_id with 400", async () => {
-    for (const userId of [undefined, "abc", 0, -3]) {
-      const response = await request("POST", "/api/tasks", {
-        body: { title: "Task", user_id: userId },
-      });
-
-      assert.equal(response.status, 400, `user_id ${userId}`);
-    }
-  });
-
-  it("rejects a user_id that does not exist with 400", async () => {
+  it("rejects user_id in the body because the owner comes from the session", async () => {
     const response = await request("POST", "/api/tasks", {
       body: { title: "Task", user_id: 999999 },
     });
 
     assert.equal(response.status, 400);
-    assert.equal(
-      response.body.error,
-      "Task user_id does not match an existing user.",
-    );
+    assert.match(response.body.error, /user_id/);
   });
 
   it("rejects a non-object JSON body with 400", async () => {
@@ -351,7 +339,7 @@ describe("POST /api/tasks", () => {
 
   it("does not create anything when validation fails", async () => {
     await request("POST", "/api/tasks", {
-      body: { title: "", user_id: demoUserId },
+      body: { title: "" },
     });
     const response = await request("GET", "/api/tasks");
 
@@ -512,7 +500,7 @@ describe("task categories (category_ids)", () => {
   it("creates a task linked to the given categories", async () => {
     const categoryIds = await categoryIdsByName("Health", "Finance");
     const response = await request("POST", "/api/tasks", {
-      body: { title: "Budget gym costs", user_id: demoUserId, category_ids: categoryIds },
+      body: { title: "Budget gym costs", category_ids: categoryIds },
     });
 
     assert.equal(response.status, 201);
@@ -588,7 +576,7 @@ describe("task categories (category_ids)", () => {
   ]) {
     it(`rejects ${description} with 400`, async () => {
       const response = await request("POST", "/api/tasks", {
-        body: { title: "Task", user_id: demoUserId, category_ids: categoryIds },
+        body: { title: "Task", category_ids: categoryIds },
       });
 
       assert.equal(response.status, 400);
@@ -601,7 +589,7 @@ describe("task categories (category_ids)", () => {
 
   it("rejects a category that does not exist and saves nothing", async () => {
     const response = await request("POST", "/api/tasks", {
-      body: { title: "Ghost category", user_id: demoUserId, category_ids: [999999] },
+      body: { title: "Ghost category", category_ids: [999999] },
     });
     const tasks = await request("GET", "/api/tasks");
 

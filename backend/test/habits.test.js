@@ -1,8 +1,10 @@
 import "./setup.js";
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
-import app from "../src/app.js";
+import { createTestApp } from "./helpers/testApp.js";
 import { getDemoUserId, pool, resetDatabase } from "./helpers/testDatabase.js";
+
+const app = createTestApp();
 
 // A fixed "today" keeps streak results independent of when tests run.
 const TODAY = "2026-11-11"; // Wednesday
@@ -109,7 +111,7 @@ describe("GET /api/habits/:id", () => {
 describe("POST /api/habits", () => {
   it("creates a habit with defaults", async () => {
     const response = await request("POST", "/api/habits", {
-      body: { name: "  Stretch  ", user_id: demoUserId },
+      body: { name: "  Stretch  " },
     });
 
     assert.equal(response.status, 201);
@@ -130,7 +132,7 @@ describe("POST /api/habits", () => {
   ]) {
     it(`rejects ${description} with 400`, async () => {
       const response = await request("POST", "/api/habits", {
-        body: { user_id: demoUserId, ...body },
+        body: { ...body },
       });
 
       assert.equal(response.status, 400);
