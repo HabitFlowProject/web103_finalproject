@@ -217,6 +217,10 @@ a {
   margin: 0;
 }
 
+.category-tag-added {
+  color: var(--color-muted);
+}
+
 .category-tag {
   padding: 0.1rem 0.6rem;
   border: 1px solid var(--category-color);

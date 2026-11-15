@@ -19,6 +19,15 @@ export function formatDueDate(dueDate) {
   });
 }
 
+// added_at is a full timestamp, so the browser's timezone is correct here.
+export function formatAddedAt(timestamp) {
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 // Today's date as "YYYY-MM-DD" in the user's local timezone.
 export function todayDateString() {
   const now = new Date();
