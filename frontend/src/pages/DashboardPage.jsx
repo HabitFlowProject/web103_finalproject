@@ -2,11 +2,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { createTask } from "../api/tasks.js";
 import ErrorMessage from "../components/ErrorMessage.jsx";
+import HabitList from "../components/HabitList.jsx";
 import LoadingState from "../components/LoadingState.jsx";
 import Modal from "../components/Modal.jsx";
 import TaskForm from "../components/TaskForm.jsx";
 import TaskList from "../components/TaskList.jsx";
 import { isOverdue, todayDateString } from "../components/taskFormatting.js";
+import useHabitActions from "../hooks/useHabitActions.js";
+import useHabitList from "../hooks/useHabitList.js";
 import useTaskActions from "../hooks/useTaskActions.js";
 import useTaskList from "../hooks/useTaskList.js";
 
@@ -35,6 +38,8 @@ function StatTile({ label, value, tone }) {
 export default function DashboardPage() {
   const { tasks, setTasks, isLoading, error, reload } = useTaskList(ALL_TASKS);
   const { busyTaskIds, actionError, toggleComplete } = useTaskActions(setTasks);
+  const habitList = useHabitList();
+  const habitActions = useHabitActions(habitList.setHabits);
   const [isAdding, setIsAdding] = useState(false);
 
   const today = todayDateString();
@@ -72,6 +77,14 @@ export default function DashboardPage() {
             <StatTile label="Incomplete" value={stats.incomplete} />
             <StatTile label="Overdue" value={stats.overdue} tone={stats.overdue > 0 ? "bad" : undefined} />
             <StatTile label="Completion" value={`${stats.completionPercent}%`} />
+            <StatTile
+              label="Active habit streaks"
+              value={
+                habitList.isLoading || habitList.error
+                  ? "–"
+                  : habitList.habits.filter((habit) => habit.current_streak > 0).length
+              }
+            />
           </div>
 
           <div className="dashboard-columns">
@@ -94,7 +107,22 @@ export default function DashboardPage() {
                 <h2>Habits</h2>
                 <Link to="/habits">Habits →</Link>
               </div>
-              <p className="empty-state">Habit tracking and streaks are coming in the next milestone.</p>
+              {habitList.isLoading && <LoadingState message="Loading habits..." />}
+              {!habitList.isLoading && habitList.error && (
+                <ErrorMessage
+                  message="Unable to load habits. Please try again."
+                  onRetry={habitList.reload}
+                />
+              )}
+              {habitActions.actionError && <ErrorMessage message={habitActions.actionError} />}
+              {!habitList.isLoading && !habitList.error && (
+                <HabitList
+                  habits={habitList.habits}
+                  emptyMessage="No habits yet."
+                  busyHabitIds={habitActions.busyHabitIds}
+                  onToggleToday={habitActions.toggleToday}
+                />
+              )}
             </div>
           </div>
         </>
