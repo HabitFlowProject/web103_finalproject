@@ -2,7 +2,9 @@
 
 Designed and developed by: Mithun Venkatesh Gowda, Bailey Perillo, Anurag Bheemapp
 
-🔗 Link to deployed app:
+🔗 Link to deployed app: https://habitflow-6ky6.onrender.com/
+
+> Hosted on Render's free plan, so the first visit after a quiet period can take about a minute while the server wakes up.
 
 ## About
 
