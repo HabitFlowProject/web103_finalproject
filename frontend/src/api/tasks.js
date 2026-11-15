@@ -1,3 +1,4 @@
+import { todayDateString } from "../components/taskFormatting.js";
 import { apiRequest } from "./client.js";
 
 // The app has no login yet, so new tasks belong to the seeded demo user.
@@ -12,7 +13,7 @@ function jsonRequest(method, body, signal) {
   };
 }
 
-// query: { completed, priority, category, sort, order } — empty values are skipped.
+// query: { completed, priority, category, due, sort, order } — empty values are skipped.
 export function listTasks(query = {}, { signal } = {}) {
   const params = new URLSearchParams();
 
@@ -20,6 +21,11 @@ export function listTasks(query = {}, { signal } = {}) {
     if (value !== undefined && value !== null && value !== "") {
       params.set(name, value);
     }
+  }
+
+  // "Overdue" and "due today" depend on which day it is for the user.
+  if (params.has("due")) {
+    params.set("today", todayDateString());
   }
 
   const search = params.toString();

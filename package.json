@@ -1,0 +1,13 @@
+{
+  "name": "habitflow",
+  "private": true,
+  "description": "Builds the React frontend and runs it from the Express backend as one service.",
+  "scripts": {
+    "build": "npm --prefix backend ci && npm --prefix frontend ci && npm --prefix frontend run build",
+    "start": "npm --prefix backend start",
+    "test": "npm --prefix backend test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

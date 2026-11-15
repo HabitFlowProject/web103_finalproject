@@ -7,6 +7,7 @@ import {
   updateTask as modifyTask,
   deleteTask as removeTask,
 } from "../models/taskModel.js";
+import { serverToday } from "../utils/habitStreaks.js";
 import {
   ValidationError,
   parseTaskId,
@@ -35,7 +36,7 @@ function handleError(error, response, next) {
 
 export async function listTasks(request, response, next) {
   try {
-    const options = validateTaskListQuery(request.query);
+    const options = validateTaskListQuery(request.query, serverToday());
     const tasks = await getAllTasks(options);
     response.json(tasks);
   } catch (error) {

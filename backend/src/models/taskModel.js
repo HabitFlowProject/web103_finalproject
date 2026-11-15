@@ -8,6 +8,7 @@ const TASK_WITH_CATEGORIES_SELECT = `
     t.priority,
     t.due_date,
     t.completed,
+    t.completed_at,
     t.user_id,
     t.created_at,
     t.updated_at,
@@ -74,6 +75,19 @@ export async function getAllTasks({ filters = {}, sort, order } = {}) {
       WHERE filter_tc.task_id = t.id
         AND lower(filter_c.name) = lower($${values.length})
     )`);
+  }
+
+  if (filters.due === "none") {
+    conditions.push("t.due_date IS NULL");
+  } else if (filters.due !== undefined) {
+    values.push(filters.today);
+    const today = `$${values.length}::date`;
+    const dueConditions = {
+      overdue: `t.completed = FALSE AND t.due_date < ${today}`,
+      today: `t.due_date = ${today}`,
+      week: `t.due_date BETWEEN ${today} AND ${today} + 6`,
+    };
+    conditions.push(dueConditions[filters.due]);
   }
 
   const whereClause =
@@ -159,8 +173,8 @@ export async function createTask({
 }) {
   const taskId = await inTransaction(async (client) => {
     const result = await client.query(
-      `INSERT INTO tasks (title, description, priority, due_date, completed, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO tasks (title, description, priority, due_date, completed, completed_at, user_id)
+       VALUES ($1, $2, $3, $4, $5, CASE WHEN $5 THEN NOW() END, $6)
        RETURNING id`,
       [title, description, priority, due_date, completed, user_id],
     );
@@ -185,6 +199,14 @@ export async function updateTask(taskId, updates) {
     if (Object.hasOwn(updates, column)) {
       values.push(updates[column]);
       assignments.push(`${column} = $${values.length}`);
+
+      // completed_at records when a task was finished. Re-saving a completed
+      // task keeps the original time; marking it incomplete clears it.
+      if (column === "completed") {
+        assignments.push(
+          `completed_at = CASE WHEN $${values.length} THEN COALESCE(completed_at, NOW()) END`,
+        );
+      }
     }
   }
 
