@@ -1,6 +1,9 @@
 # HabitFlow
 
-Designed and developed by: Mithun Venkatesh Gowda, Bailey Perillo, Anurag Bheemapp
+Designed and developed by: 
+- Mithun Venkatesh Gowda
+- Bailey Perillo
+- Anurag Bheemappa Gnanamurthy
 
 🔗 Link to deployed app: https://habitflow-6ky6.onrender.com/
 
