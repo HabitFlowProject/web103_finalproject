@@ -1,8 +1,10 @@
 import "./setup.js";
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
-import app from "../src/app.js";
+import { createTestApp } from "./helpers/testApp.js";
 import { pool, resetDatabase } from "./helpers/testDatabase.js";
+
+const app = createTestApp();
 
 // A fixed "today" keeps the week independent of when tests run.
 // 2026-11-11 is a Wednesday, so the week is Mon 2026-11-09 to Sun 2026-11-15.

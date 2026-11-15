@@ -1,9 +1,6 @@
 import { todayDateString } from "../components/taskFormatting.js";
 import { apiRequest } from "./client.js";
 
-// The app has no login yet, so new tasks belong to the seeded demo user.
-const DEMO_USER_ID = Number(import.meta.env.VITE_DEMO_USER_ID ?? 1);
-
 function jsonRequest(method, body, signal) {
   return {
     method,
@@ -39,7 +36,7 @@ export function getTask(taskId, { signal } = {}) {
 export function createTask(fields, { signal } = {}) {
   return apiRequest(
     "/api/tasks",
-    jsonRequest("POST", { ...fields, user_id: DEMO_USER_ID }, signal),
+    jsonRequest("POST", fields, signal),
   );
 }
 

@@ -2,7 +2,9 @@
 
 ## List of Tables
 
-- `users`: Demo users and future GitHub OAuth identities.
+- `users`: People who use HabitFlow (the seeded demo user and GitHub sign-ins).
+- `github_profiles`: GitHub account details for a user (one-to-one with `users`).
+- `session`: Login sessions, stored by `connect-pg-simple`.
 - `tasks`: One-time or scheduled work items owned by a user.
 - `habits`: Recurring routines owned by a user.
 - `habit_completions`: Daily completion records for habits.
@@ -16,6 +18,7 @@
 
 ```mermaid
 erDiagram
+    USERS ||--o| GITHUB_PROFILES : "signs in with"
     USERS ||--o{ TASKS : owns
     USERS ||--o{ HABITS : owns
     HABITS ||--o{ HABIT_COMPLETIONS : records
@@ -26,8 +29,17 @@ erDiagram
         integer id PK
         text name
         text email UK
-        text github_id UK
         timestamp created_at
+    }
+
+    GITHUB_PROFILES {
+        integer user_id PK, FK
+        text github_id UK
+        text username
+        text avatar_url
+        text profile_url
+        timestamp created_at
+        timestamp updated_at
     }
 
     TASKS {
@@ -82,8 +94,11 @@ erDiagram
   `task_categories`.
 - The composite primary key on `task_categories` prevents assigning the same
   category to the same task more than once.
-- The `github_id` field is reserved for the planned GitHub OAuth stretch
-  feature. The core app can use seeded demo data before authentication is added.
+- `users` to `github_profiles` is a one-to-one relationship: `user_id` is
+  both the primary key and the foreign key of `github_profiles`, so each user
+  has at most one GitHub profile and each profile belongs to one user.
+- On a user's first GitHub sign-in, a starter set of tasks and habits is
+  created for them automatically.
 
 ## Seeded Categories
 

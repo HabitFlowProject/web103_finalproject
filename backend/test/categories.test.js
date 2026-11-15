@@ -1,8 +1,10 @@
 import "./setup.js";
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
-import app from "../src/app.js";
+import { createTestApp } from "./helpers/testApp.js";
 import { pool, resetDatabase } from "./helpers/testDatabase.js";
+
+const app = createTestApp();
 
 let server;
 let baseUrl;

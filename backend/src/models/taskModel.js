@@ -1,4 +1,5 @@
 import pool from "../../config/db.js";
+import { inTransaction } from "./transaction.js";
 
 const TASK_WITH_CATEGORIES_SELECT = `
   SELECT
@@ -52,9 +53,10 @@ function buildOrderBy(sort, order) {
   return `ORDER BY ${definition.expression} ${direction} ${definition.nulls}, t.id ${direction}`;
 }
 
-export async function getAllTasks({ filters = {}, sort, order } = {}) {
-  const conditions = [];
-  const values = [];
+// Every query is limited to one user's tasks.
+export async function getAllTasks(userId, { filters = {}, sort, order } = {}) {
+  const values = [userId];
+  const conditions = ["t.user_id = $1"];
 
   if (filters.completed !== undefined) {
     values.push(filters.completed);
@@ -91,8 +93,7 @@ export async function getAllTasks({ filters = {}, sort, order } = {}) {
     conditions.push(dueConditions[filters.due]);
   }
 
-  const whereClause =
-    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
   const result = await pool.query(
     `${TASK_WITH_CATEGORIES_SELECT}
@@ -105,20 +106,15 @@ export async function getAllTasks({ filters = {}, sort, order } = {}) {
   return result.rows;
 }
 
-export async function getTaskById(taskId) {
+export async function getTaskById(taskId, userId) {
   const result = await pool.query(
     `${TASK_WITH_CATEGORIES_SELECT}
-     WHERE t.id = $1
+     WHERE t.id = $1 AND t.user_id = $2
      GROUP BY t.id`,
-    [taskId],
+    [taskId, userId],
   );
 
   return result.rows[0] ?? null;
-}
-
-export async function userExists(userId) {
-  const result = await pool.query("SELECT 1 FROM users WHERE id = $1", [userId]);
-  return result.rowCount > 0;
 }
 
 export async function allCategoriesExist(categoryIds) {
@@ -152,24 +148,6 @@ async function replaceTaskCategories(client, taskId, categoryIds) {
   }
 }
 
-// Runs `work` inside a transaction so a task and its category links are
-// saved together or not at all.
-async function inTransaction(work) {
-  const client = await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-    const result = await work(client);
-    await client.query("COMMIT");
-    return result;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
 export async function createTask({
   title,
   description,
@@ -192,13 +170,13 @@ export async function createTask({
     return newTaskId;
   });
 
-  return getTaskById(taskId);
+  return getTaskById(taskId, user_id);
 }
 
 // Only columns present in `updates` are written, so PATCH is partial and
 // an explicit null (e.g. due_date) clears the column. `category_ids`, when
 // present, replaces the task's categories.
-export async function updateTask(taskId, updates) {
+export async function updateTask(taskId, userId, updates) {
   const allowedColumns = ["title", "description", "priority", "due_date", "completed"];
   const assignments = [];
   const values = [];
@@ -224,13 +202,13 @@ export async function updateTask(taskId, updates) {
     throw new Error("updateTask requires at least one field to update.");
   }
 
-  values.push(taskId);
+  values.push(taskId, userId);
 
   const found = await inTransaction(async (client) => {
     const result = await client.query(
       `UPDATE tasks
        SET ${[...assignments, "updated_at = NOW()"].join(", ")}
-       WHERE id = $${values.length}
+       WHERE id = $${values.length - 1} AND user_id = $${values.length}
        RETURNING id`,
       values,
     );
@@ -245,10 +223,13 @@ export async function updateTask(taskId, updates) {
     return true;
   });
 
-  return found ? getTaskById(taskId) : null;
+  return found ? getTaskById(taskId, userId) : null;
 }
 
-export async function deleteTask(taskId) {
-  const result = await pool.query("DELETE FROM tasks WHERE id = $1", [taskId]);
+export async function deleteTask(taskId, userId) {
+  const result = await pool.query("DELETE FROM tasks WHERE id = $1 AND user_id = $2", [
+    taskId,
+    userId,
+  ]);
   return result.rowCount > 0;
 }

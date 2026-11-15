@@ -17,10 +17,10 @@ export async function getWeeklyInsights(request, response, next) {
     const thisWeek = weekDates(today);
 
     const [habits, tasksCompletedByDay, taskCounts, categories] = await Promise.all([
-      getHabitsWithCompletions(),
-      getTasksCompletedByDay(addDays(thisWeek[0], -7), thisWeek[6]),
-      getTaskCounts(today, thisWeek[6]),
-      getCategoryUsage(),
+      getHabitsWithCompletions(request.user.id),
+      getTasksCompletedByDay(request.user.id, addDays(thisWeek[0], -7), thisWeek[6]),
+      getTaskCounts(request.user.id, today, thisWeek[6]),
+      getCategoryUsage(request.user.id),
     ]);
 
     response.json(

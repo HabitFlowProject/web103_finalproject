@@ -34,7 +34,8 @@ const fixturesSql = `
 export async function resetDatabase() {
   await pool.query(`
     DROP TABLE IF EXISTS
-      task_categories, categories, habit_completions, habits, tasks, users
+      task_categories, categories, habit_completions, habits, tasks,
+      github_profiles, session, users
     CASCADE
   `);
   await pool.query(schemaSql);

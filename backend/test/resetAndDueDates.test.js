@@ -1,8 +1,10 @@
 import "./setup.js";
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
-import app from "../src/app.js";
+import { createTestApp } from "./helpers/testApp.js";
 import { getDemoUserId, getTaskIdByTitle, pool, resetDatabase } from "./helpers/testDatabase.js";
+
+const app = createTestApp();
 
 const TODAY = "2026-11-11";
 
@@ -42,32 +44,35 @@ after(async () => {
 });
 
 describe("POST /api/reset", () => {
-  it("restores the seeded tasks, habits, and categories", async () => {
-    await request("POST", "/api/tasks", { body: { title: "Temporary", user_id: demoUserId } });
+  it("replaces the user's tasks and habits with the starter set", async () => {
+    await request("POST", "/api/tasks", { body: { title: "Temporary" } });
     const walk = await pool.query("SELECT id FROM habits WHERE name = 'Morning walk'");
     await pool.query(
       "INSERT INTO habit_completions (habit_id, completed_on) VALUES ($1, $2)",
       [walk.rows[0].id, TODAY],
     );
-    await pool.query("DELETE FROM habits WHERE name = 'Drink water'");
 
-    const response = await request("POST", "/api/reset");
+    const response = await request("POST", `/api/reset?today=${TODAY}`);
 
     assert.equal(response.status, 200);
     assert.deepEqual(response.body, { status: "reset" });
 
     const tasks = await request("GET", "/api/tasks");
     assert.deepEqual(titlesOf(tasks.body), [
-      "Finish project outline",
-      "Plan workout",
-      "Review reading notes",
+      "Explore HabitFlow",
+      "Plan your week",
+      "Schedule a workout",
+      "Sign in to HabitFlow",
     ]);
+    const explore = tasks.body.find((task) => task.title === "Explore HabitFlow");
+    assert.equal(explore.due_date, TODAY);
+    assert.deepEqual(explore.categories.map((category) => category.name), ["Learning"]);
 
     const habits = await request("GET", "/api/habits");
     assert.deepEqual(habits.body.map((habit) => habit.name).sort(), [
       "Drink water",
-      "Morning walk",
       "Read for 20 minutes",
+      "Weekly review",
     ]);
     assert.ok(habits.body.every((habit) => habit.completion_count === 0));
 
@@ -75,12 +80,16 @@ describe("POST /api/reset", () => {
     assert.equal(categories.body.length, 5);
   });
 
-  it("restarts ids so the demo user is id 1 again", async () => {
+  it("leaves other users' data alone", async () => {
+    const other = await pool.query("INSERT INTO users (name) VALUES ('Other') RETURNING id");
+    const otherId = other.rows[0].id;
+    await pool.query("INSERT INTO tasks (user_id, title) VALUES ($1, 'Other task')", [otherId]);
+
     await request("POST", "/api/reset");
 
-    assert.equal(await getDemoUserId(), 1);
-    const created = await request("POST", "/api/tasks", { body: { title: "After reset", user_id: 1 } });
-    assert.equal(created.status, 201);
+    const otherTasks = await pool.query("SELECT title FROM tasks WHERE user_id = $1", [otherId]);
+    assert.deepEqual(otherTasks.rows, [{ title: "Other task" }]);
+    assert.equal(demoUserId, await getDemoUserId());
   });
 });
 
@@ -147,9 +156,9 @@ describe("GET /api/tasks?due=", () => {
 
 describe("task completed_at", () => {
   it("is null for a new incomplete task and set for a new completed one", async () => {
-    const open = await request("POST", "/api/tasks", { body: { title: "Open", user_id: demoUserId } });
+    const open = await request("POST", "/api/tasks", { body: { title: "Open" } });
     const done = await request("POST", "/api/tasks", {
-      body: { title: "Done", user_id: demoUserId, completed: true },
+      body: { title: "Done", completed: true },
     });
 
     assert.equal(open.body.completed_at, null);

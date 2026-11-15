@@ -63,27 +63,32 @@ The final milestone (Unit 9) completes the app:
 | Method | Route | Success | Notes |
 | --- | --- | --- | --- |
 | `GET` | `/api/health` | `200` | Health check |
+| `GET` | `/api/auth/github` | `302` | Starts GitHub sign-in (redirects to GitHub) |
+| `GET` | `/api/auth/github/callback` | `302` | GitHub returns here; signs the user in and redirects to the app |
+| `GET` | `/api/auth/me` | `200` | `{ user }` for the signed-in user, or `{ user: null }` |
+| `POST` | `/api/auth/logout` | `204` | Signs out and ends the session |
 | `GET` | `/api/tasks` | `200` | Supports filters and sorting below |
 | `GET` | `/api/tasks/:id` | `200` | Includes related `categories` |
-| `POST` | `/api/tasks` | `201` | Requires `title` and an existing `user_id` |
+| `POST` | `/api/tasks` | `201` | Requires `title`; the task belongs to the signed-in user |
 | `PATCH` | `/api/tasks/:id` | `200` | Partial update; `due_date: null` clears the date |
 | `DELETE` | `/api/tasks/:id` | `204` | No response body |
 | `GET` | `/api/categories` | `200` | All categories, sorted by name |
 | `GET` | `/api/habits` | `200` | Habits with `current_streak`, `completed_today`, `last_completed_on`, `completion_count` |
 | `GET` | `/api/habits/:id` | `200` | One habit with the same calculated fields |
-| `POST` | `/api/habits` | `201` | Requires `name` and an existing `user_id`; `frequency` is `daily`, `weekdays`, or `weekly` |
+| `POST` | `/api/habits` | `201` | Requires `name`; `frequency` is `daily`, `weekdays`, or `weekly` |
 | `PATCH` | `/api/habits/:id` | `200` | Partial update of `name`, `description`, `frequency` |
 | `DELETE` | `/api/habits/:id` | `204` | Also deletes the habit's completions |
 | `GET` | `/api/habits/:id/completions` | `200` | Completion history, newest first |
 | `POST` | `/api/habits/:id/completions` | `201` | Logs a completion (`completed_on` defaults to today); `409` if already logged |
 | `DELETE` | `/api/habits/:id/completions/:date` | `200` | Undoes a completion and returns the updated streak |
 | `GET` | `/api/insights/weekly` | `200` | Calculated summary of the current Monday–Sunday week (custom non-RESTful route) |
-| `POST` | `/api/reset` | `200` | Restores every table to the seed data (custom non-RESTful route) |
+| `POST` | `/api/reset` | `200` | Replaces the signed-in user's tasks and habits with the starter set (custom non-RESTful route) |
 
 Task fields: `title` (non-empty string), `description` (string),
 `priority` (`low`, `medium`, `high`), `due_date` (`YYYY-MM-DD` or `null`),
 `completed` (`true`/`false`), `category_ids` (array of existing category ids;
-replaces the task's categories, `[]` removes them), and `user_id` (create only).
+replaces the task's categories, `[]` removes them). The owner is always the
+signed-in user, so `user_id` is not accepted in request bodies.
 Responses also include `completed_at`, set automatically when a task is
 completed and cleared when it is reopened.
 
@@ -108,6 +113,10 @@ last week, overdue, due this week, open), `habits` (check-ins this week and
 last week, completion rate of scheduled check-ins, active streaks, best
 streak, and every habit's streak), `categories` (task counts per category),
 and `most_used_category`.
+
+Tasks, habits, insights, and reset require signing in and return `401` for
+visitors. Every query is limited to the signed-in user's own data, so another
+user's task or habit id returns `404`. Health and categories are public.
 
 Error responses use the shape `{ "error": "message" }`: `400` for invalid IDs,
 fields, query parameters, or malformed JSON; `404` for missing tasks or
@@ -221,10 +230,24 @@ loading, empty, and error states, including "Task not found." for missing tasks.
 
 ### ✅ Reset Demo Data:
 
-"Reset demo data" in the footer restores every table to the seeded demo data
-after a confirmation, and the current page reloads with the fresh data.
+"Reset demo data" in the footer replaces the signed-in user's tasks, habits,
+and check-ins with the starter set after a confirmation, and the current page
+reloads with the fresh data. Other users' data is not affected.
 
 ![Reset demo data walkthrough](images/reset-demo-data.gif)
+
+### ✅ GitHub Sign-In:
+
+Users sign in with GitHub (Passport.js with `passport-github2`); every page
+except the login page requires signing in, and each user only sees their own
+tasks and habits. The GitHub username and avatar are stored in
+`github_profiles`, which has a one-to-one relationship with `users`. Sessions
+are stored in PostgreSQL so sign-ins survive server restarts.
+
+On a user's first sign-in, HabitFlow automatically creates a starter set of
+four tasks (linked to categories, one already completed) and three habits, so
+the app is ready to explore. The same starter set is what "Reset demo data"
+restores.
 
 ## Installation Instructions
 
@@ -249,7 +272,18 @@ PGPORT=5432
 PGDATABASE=
 NODE_ENV=development
 PORT=3000
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_CALLBACK_URL=http://localhost:3000/api/auth/github/callback
+SESSION_SECRET=
 ```
+
+For GitHub sign-in, create a GitHub OAuth App (GitHub → Settings → Developer
+settings → OAuth Apps) with the homepage `http://localhost:5173` and the
+callback URL above, and copy its client ID and secret into `.env`.
+`SESSION_SECRET` can be any long random string (`openssl rand -hex 32`).
+After signing in, GitHub sends the browser back to `CLIENT_URL`, which
+defaults to `http://localhost:5173` in development.
 
 Do not commit `.env` or database credentials.
 
@@ -300,8 +334,12 @@ every non-API route falling back to `index.html` so links like
 3. Set the environment variables `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`,
    `PGDATABASE`, `NODE_ENV=production`, and `NODE_VERSION=22`. Render
    provides `PORT`.
-4. After the first deploy, open the app and click **Reset demo data** to load
-   the seed data.
+4. Create a second GitHub OAuth App for production with the callback URL
+   `https://<your-app>.onrender.com/api/auth/github/callback`, and set
+   `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_CALLBACK_URL`, and
+   `SESSION_SECRET` on Render.
+5. Open the app and sign in with GitHub; the first sign-in creates your
+   starter tasks and habits.
 
 `db:schema` only creates missing tables and columns, so it is safe on every
 deploy. If the frontend is ever hosted separately, build it with

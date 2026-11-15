@@ -9,7 +9,6 @@ import {
   removeCompletion,
   updateHabit as modifyHabit,
 } from "../models/habitModel.js";
-import { userExists } from "../models/taskModel.js";
 import { calculateCurrentStreak, serverToday } from "../utils/habitStreaks.js";
 import { ValidationError } from "../validators/taskValidation.js";
 import {
@@ -45,7 +44,7 @@ function toHabitResponse({ completion_dates: dates, ...habit }, today) {
 export async function listHabits(request, response, next) {
   try {
     const today = readTodayQuery(request.query, serverToday());
-    const habits = await getAllHabits();
+    const habits = await getAllHabits(request.user.id);
     response.json(habits.map((habit) => toHabitResponse(habit, today)));
   } catch (error) {
     handleError(error, response, next);
@@ -56,7 +55,7 @@ export async function getHabit(request, response, next) {
   try {
     const habitId = parseHabitId(request.params.id);
     const today = readTodayQuery(request.query, serverToday());
-    const habit = await getHabitById(habitId);
+    const habit = await getHabitById(habitId, request.user.id);
 
     if (!habit) {
       return response.status(404).json(HABIT_NOT_FOUND);
@@ -72,11 +71,8 @@ export async function createHabit(request, response, next) {
   try {
     const habitInput = validateCreateHabitInput(request.body);
 
-    if (!(await userExists(habitInput.user_id))) {
-      throw new ValidationError("Habit user_id does not match an existing user.");
-    }
-
-    const habit = await insertHabit(habitInput);
+    // New habits always belong to the signed-in user.
+    const habit = await insertHabit({ ...habitInput, user_id: request.user.id });
     response.status(201).json(toHabitResponse(habit, serverToday()));
   } catch (error) {
     handleError(error, response, next);
@@ -88,7 +84,7 @@ export async function updateHabit(request, response, next) {
     const habitId = parseHabitId(request.params.id);
     const today = readTodayQuery(request.query, serverToday());
     const updates = validateUpdateHabitInput(request.body);
-    const habit = await modifyHabit(habitId, updates);
+    const habit = await modifyHabit(habitId, request.user.id, updates);
 
     if (!habit) {
       return response.status(404).json(HABIT_NOT_FOUND);
@@ -104,7 +100,7 @@ export async function deleteHabit(request, response, next) {
   try {
     const habitId = parseHabitId(request.params.id);
 
-    if (!(await removeHabit(habitId))) {
+    if (!(await removeHabit(habitId, request.user.id))) {
       return response.status(404).json(HABIT_NOT_FOUND);
     }
 
@@ -118,7 +114,7 @@ export async function listCompletions(request, response, next) {
   try {
     const habitId = parseHabitId(request.params.id);
 
-    if (!(await habitExists(habitId))) {
+    if (!(await habitExists(habitId, request.user.id))) {
       return response.status(404).json(HABIT_NOT_FOUND);
     }
 
@@ -135,7 +131,7 @@ export async function completeHabit(request, response, next) {
     const today = readTodayQuery(request.query, serverToday());
     const completedOn = validateCompletionInput(request.body, today);
 
-    if (!(await habitExists(habitId))) {
+    if (!(await habitExists(habitId, request.user.id))) {
       return response.status(404).json(HABIT_NOT_FOUND);
     }
 
@@ -147,7 +143,7 @@ export async function completeHabit(request, response, next) {
         .json({ error: "Habit is already completed for this date." });
     }
 
-    const habit = await getHabitById(habitId);
+    const habit = await getHabitById(habitId, request.user.id);
     response.status(201).json({ completion, habit: toHabitResponse(habit, today) });
   } catch (error) {
     handleError(error, response, next);
@@ -161,7 +157,7 @@ export async function uncompleteHabit(request, response, next) {
     const completedOn = parseDate(request.params.date, "Completion date");
     const today = readTodayQuery(request.query, serverToday());
 
-    if (!(await habitExists(habitId))) {
+    if (!(await habitExists(habitId, request.user.id))) {
       return response.status(404).json(HABIT_NOT_FOUND);
     }
 
@@ -169,7 +165,7 @@ export async function uncompleteHabit(request, response, next) {
       return response.status(404).json({ error: "Completion not found." });
     }
 
-    const habit = await getHabitById(habitId);
+    const habit = await getHabitById(habitId, request.user.id);
     response.json({ habit: toHabitResponse(habit, today) });
   } catch (error) {
     handleError(error, response, next);

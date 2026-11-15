@@ -1,7 +1,6 @@
 import {
   getAllTasks,
   getTaskById,
-  userExists,
   allCategoriesExist,
   createTask as insertTask,
   updateTask as modifyTask,
@@ -37,7 +36,7 @@ function handleError(error, response, next) {
 export async function listTasks(request, response, next) {
   try {
     const options = validateTaskListQuery(request.query, serverToday());
-    const tasks = await getAllTasks(options);
+    const tasks = await getAllTasks(request.user.id, options);
     response.json(tasks);
   } catch (error) {
     handleError(error, response, next);
@@ -47,7 +46,7 @@ export async function listTasks(request, response, next) {
 export async function getTask(request, response, next) {
   try {
     const taskId = parseTaskId(request.params.id);
-    const task = await getTaskById(taskId);
+    const task = await getTaskById(taskId, request.user.id);
 
     if (!task) {
       return response.status(404).json(TASK_NOT_FOUND);
@@ -62,13 +61,10 @@ export async function getTask(request, response, next) {
 export async function createTask(request, response, next) {
   try {
     const taskInput = validateCreateTaskInput(request.body);
-
-    if (!(await userExists(taskInput.user_id))) {
-      throw new ValidationError("Task user_id does not match an existing user.");
-    }
     await assertCategoriesExist(taskInput.category_ids);
 
-    const task = await insertTask(taskInput);
+    // New tasks always belong to the signed-in user.
+    const task = await insertTask({ ...taskInput, user_id: request.user.id });
     response.status(201).json(task);
   } catch (error) {
     handleError(error, response, next);
@@ -80,7 +76,7 @@ export async function updateTask(request, response, next) {
     const taskId = parseTaskId(request.params.id);
     const updates = validateUpdateTaskInput(request.body);
     await assertCategoriesExist(updates.category_ids);
-    const task = await modifyTask(taskId, updates);
+    const task = await modifyTask(taskId, request.user.id, updates);
 
     if (!task) {
       return response.status(404).json(TASK_NOT_FOUND);
@@ -95,7 +91,7 @@ export async function updateTask(request, response, next) {
 export async function deleteTask(request, response, next) {
   try {
     const taskId = parseTaskId(request.params.id);
-    const deleted = await removeTask(taskId);
+    const deleted = await removeTask(taskId, request.user.id);
 
     if (!deleted) {
       return response.status(404).json(TASK_NOT_FOUND);
