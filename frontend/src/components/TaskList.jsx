@@ -1,5 +1,8 @@
 import TaskCard from "./TaskCard.jsx";
 
+// Rows fade in with a short stagger (capped so long lists are not slowed down).
+const MAX_STAGGER = 8;
+
 export default function TaskList({
   tasks,
   emptyMessage = "No tasks yet.",
@@ -14,8 +17,8 @@ export default function TaskList({
 
   return (
     <ul className="task-list">
-      {tasks.map((task) => (
-        <li key={task.id}>
+      {tasks.map((task, index) => (
+        <li key={task.id} style={{ "--i": Math.min(index, MAX_STAGGER) }}>
           <TaskCard
             task={task}
             isBusy={busyTaskIds.includes(task.id)}

@@ -95,7 +95,7 @@ export default function TaskDetailsPage() {
 
   return (
     <section className="page">
-      <p>
+      <p className="back-link">
         <Link to="/tasks">← Back to tasks</Link>
       </p>
       {isLoading && <LoadingState message="Loading task..." />}
