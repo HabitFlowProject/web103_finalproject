@@ -10,6 +10,7 @@ import {
 } from "../api/habits.js";
 import { describeHabitActionError } from "../components/actionErrors.js";
 import ErrorMessage from "../components/ErrorMessage.jsx";
+import { FlameIcon } from "../components/Icons.jsx";
 import HabitForm from "../components/HabitForm.jsx";
 import { FREQUENCY_LABELS, formatStreak } from "../components/habitFormatting.js";
 import LoadingState from "../components/LoadingState.jsx";
@@ -101,7 +102,7 @@ export default function HabitDetailsPage() {
 
   return (
     <section className="page">
-      <p>
+      <p className="back-link">
         <Link to="/habits">← Back to habits</Link>
       </p>
       {isLoading && <LoadingState message="Loading habit..." />}
@@ -120,6 +121,7 @@ export default function HabitDetailsPage() {
             </span>
           </div>
           <p className={habit.current_streak > 0 ? "habit-streak active large" : "habit-streak large"}>
+            {habit.current_streak > 0 && <FlameIcon size={22} />}
             {formatStreak(habit)}
           </p>
           <dl className="task-details-fields">

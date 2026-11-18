@@ -3,6 +3,8 @@ import { createHabit, updateHabit } from "../api/habits.js";
 import ErrorMessage from "../components/ErrorMessage.jsx";
 import HabitForm from "../components/HabitForm.jsx";
 import HabitList from "../components/HabitList.jsx";
+import HeaderAction from "../components/HeaderAction.jsx";
+import { PlusIcon } from "../components/Icons.jsx";
 import LoadingState from "../components/LoadingState.jsx";
 import Modal from "../components/Modal.jsx";
 import useHabitActions from "../hooks/useHabitActions.js";
@@ -25,20 +27,29 @@ export default function HabitsPage() {
     setFormState(null);
   }
 
+  function openCreateForm() {
+    clearActionError();
+    setFormState({});
+  }
+
+  const doneToday = habits.filter((habit) => habit.completed_today).length;
+
   return (
     <section className="page">
+      <HeaderAction>
+        <button type="button" className="button button-primary header-action" onClick={openCreateForm}>
+          <PlusIcon size={16} />
+          <span className="header-action-label">New habit</span>
+        </button>
+      </HeaderAction>
+
       <div className="page-header">
         <h1>Habits</h1>
-        <button
-          type="button"
-          className="button button-primary"
-          onClick={() => {
-            clearActionError();
-            setFormState({});
-          }}
-        >
-          Add habit
-        </button>
+        {!isLoading && !error && habits.length > 0 && (
+          <p className="page-meta">
+            {habits.length} active · {doneToday} done today
+          </p>
+        )}
       </div>
 
       {actionError && <ErrorMessage message={actionError} />}
@@ -58,11 +69,12 @@ export default function HabitsPage() {
             setFormState({ habit });
           }}
           onDelete={removeHabit}
+          onAdd={openCreateForm}
         />
       )}
 
       {formState && (
-        <Modal title={formState.habit ? "Edit habit" : "Add habit"} onClose={() => setFormState(null)}>
+        <Modal title={formState.habit ? "Edit habit" : "New habit"} onClose={() => setFormState(null)}>
           <HabitForm
             habit={formState.habit}
             onSubmit={handleSubmit}
